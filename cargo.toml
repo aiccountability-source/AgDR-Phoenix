@@ -1,0 +1,21 @@
+[package]
+name = "agdr-aki"
+version = "1.8.0"
+edition = "2018"
+license = "Apache-2.0 OR CC0-1.0"
+description = "Atomic Kernel Inference SDK for Phoenix v1.8 Ultra"
+authors = ["Genesis Glass Foundation <founding@accountability.ai>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+blake3 = { version = "1.5", features = ["rayon", "std"] }
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+bincode = "2.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.10", features = ["v4", "serde"] }
+rand = "0.8"
