@@ -76,6 +76,20 @@ pub struct PhoenixKernel {
     wal_path: String,
     max_spine_size: usize,
 }
+use std::path::Path;
+
+fn load_or_generate_signing_key(wal_path: &str) -> SigningKey {
+    let key_path = format!("{}.key", wal_path);
+    if Path::new(&key_path).exists() {
+        let bytes = std::fs::read(&key_path).expect("Failed to read signing key");
+        let arr: [u8; 32] = bytes.try_into().expect("Invalid key length");
+        SigningKey::from_bytes(&arr)
+    } else {
+        let key = SigningKey::generate(&mut OsRng);
+        std::fs::write(&key_path, key.to_bytes()).expect("Failed to write signing key");
+        key
+    }
+}
 
 #[pymethods]
 impl PhoenixKernel {
@@ -83,7 +97,7 @@ impl PhoenixKernel {
     fn new(wal_path: String, _enable_gpu: bool) -> Self {
         let _ = OpenOptions::new().create(true).append(true).open(&wal_path);
         Self {
-            signing_key: SigningKey::generate(&mut OsRng),
+            signing_key: load_or_generate_signing_key(&wal_path),
             merkle_root: blake3::hash(b"genesis"),
             spine: VecDeque::with_capacity(500),
             reputation: 0.5,
