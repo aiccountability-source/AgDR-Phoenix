@@ -10,8 +10,7 @@ use chrono::Utc;
 use uuid::Uuid;
 use rand::rngs::OsRng;
 use std::path::Path;
-mod zk;
-use crate::zk::*;
+pub mod zk;
 
 // ── PPPTriplet ────────────────────────────────────────────────────────────────
 
