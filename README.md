@@ -2,7 +2,7 @@
 
 Atomic Kernel Inference SDK for Phoenix v1.8 Ultra.
 
-Seals every AI decision at the exact "i" moment with PPP triplet, coherence score, reputation scalar, and HumanDeltaChain (FOI) for evidentiary standing and human-in-the-loop.
+Seals every AI decision at the exact moment it occurs with a PPP triplet, coherence score, reputation scalar, and HumanDeltaChain for evidentiary standing and human oversight.
 
 Maintained by Genesis Glass Foundation.
 
@@ -32,3 +32,4 @@ record = engine.capture(
 
 print(record.id)
 print("Coherence:", record.coherence_score)
+print("Reputation:", record.reputation_scalar)
