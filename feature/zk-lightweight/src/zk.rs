@@ -1,26 +1,28 @@
 use pyo3::prelude::*;
 use blake3;
 use serde::{Serialize, Deserialize};
-use crate::Record;   // ← This line fixes the error!
+use crate::SealedRecord;
 
+#[pyclass]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ZKProof {
-    pub proof_id: String,
-    pub proof_bytes: Vec<u8>,
-    pub mode: String,
+    #[pyo3(get)] pub proof_id: String,
+    #[pyo3(get)] pub proof_bytes: Vec<u8>,
+    #[pyo3(get)] pub mode: String,
 }
 
 #[pymethods]
-impl Record {
-    fn generate_zk_proof(&self, mode: &str) -> PyResult<ZKProof> {
+impl SealedRecord {
+    fn generate_zk_proof(&self, mode: String) -> PyResult<ZKProof> {
         let nonce = blake3::hash(b"zk_nonce_salt_2026");
-        let commitment = blake3::hash(&[self.sealed_data.as_slice(), nonce.as_bytes()].concat());
-        let proof_bytes = [commitment.as_bytes(), &self.signature].concat();
-        
+        let commitment = blake3::hash(
+            &[self.hash.as_bytes(), nonce.as_bytes()].concat()
+        );
+        let proof_bytes = [commitment.as_bytes(), self.signature.as_slice()].concat();
         Ok(ZKProof {
             proof_id: format!("zk_{}", &self.id),
             proof_bytes,
-            mode: mode.to_string(),
+            mode,
         })
     }
 
@@ -31,7 +33,7 @@ impl Record {
             "signature": hex::encode(&self.signature),
         });
         if include_zk_proof {
-            let proof = self.generate_zk_proof("full_validity")?;
+            let proof = self.generate_zk_proof("full_validity".to_string())?;
             pkg["zk_proof"] = serde_json::json!({
                 "proof_id": proof.proof_id,
                 "proof_bytes": hex::encode(&proof.proof_bytes),
