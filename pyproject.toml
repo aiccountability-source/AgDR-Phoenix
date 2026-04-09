@@ -10,7 +10,7 @@ dependencies = ["pydantic>=2.0"]
 
 [tool.maturin]
 bindings = "pyo3"
-python-source = "agdr-aki"
+python-source = "agdr_aki"
 
 [build-system]
 requires = ["maturin>=1.0"]
