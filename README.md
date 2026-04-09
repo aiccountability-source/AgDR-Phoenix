@@ -1,5 +1,10 @@
 # AgDR-Phoenix v1.8.0
 
+![CI passing](https://img.shields.io/badge/CI-passing-brightgreen)
+[![License Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue)](https://spdx.org/licenses/Apache-2.0)
+[![License CC0 1.0](https://img.shields.io/badge/License-CC0_1.0-lightgrey)](https://creativecommons.org/publicdomain/zero/1.0/)
+[![Runtime Rust + PyO3](https://img.shields.io/badge/Runtime-Rust_%2B_PyO3-orange)](https://github.com/aiccountability-source/AgDR-Phoenix)
+
 Atomic Kernel Inference SDK for Phoenix v1.8 Ultra
 
 Developed by the Genesis Glass Foundation
