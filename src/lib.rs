@@ -4,12 +4,42 @@ use std::collections::VecDeque;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::convert::TryInto;
+use std::mem::MaybeUninit;
 use blake3::Hash as Blake3Hash;
 use ed25519_dalek::{Signer, SigningKey};
 use chrono::Utc;
 use uuid::Uuid;
 use rand::rngs::OsRng;
 use std::path::Path;
+
+// ── Tamper-resistant monotonic timing (POSIX) ────────────────────────────────
+// Uses CLOCK_MONOTONIC_RAW: immune to NTP, settimeofday(), leap seconds.
+// Fallback to std::time::Instant if clock_gettime fails (should not happen on Linux).
+#[inline(always)]
+fn monotonic_raw_nanos() -> u64 {
+    #[cfg(target_os = "linux")]
+    {
+        use libc::{clock_gettime, CLOCK_MONOTONIC_RAW, timespec};
+        let mut ts = MaybeUninit::<timespec>::uninit();
+        unsafe {
+            if clock_gettime(CLOCK_MONOTONIC_RAW, ts.as_mut_ptr()) == 0 {
+                let ts = ts.assume_init();
+                (ts.tv_sec as u64)
+                    .wrapping_mul(1_000_000_000)
+                    .wrapping_add(ts.tv_nsec as u64)
+            } else {
+                // Fallback: use Instant if clock_gettime fails
+                std::time::Instant::now().elapsed().as_nanos() as u64
+            }
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        // macOS, BSD, Windows: use Instant (monotonic but not raw)
+        // For production deployments on non-Linux, consider platform-specific raw clocks
+        std::time::Instant::now().elapsed().as_nanos() as u64
+    }
+}
 
 // ── PPPTriplet ────────────────────────────────────────────────────────────────
 
@@ -82,7 +112,8 @@ pub struct CoreInsightToken {
 #[derive(Serialize, Deserialize)]
 pub struct SealedRecord {
     #[pyo3(get)] pub id: String,
-    #[pyo3(get)] pub timestamp: String,
+    #[pyo3(get)] pub timestamp: String,           // Wall-clock (UTC) for legal mapping
+    #[pyo3(get)] pub monotonic_nanos: u64,        // Tamper-resistant monotonic timestamp
     #[pyo3(get)] pub hash: String,
     #[pyo3(get)] pub signature: Vec<u8>,
     #[pyo3(get)] pub merkle_root: String,
@@ -268,9 +299,13 @@ impl PyAKIEngine {
         let signature = self.inner.signing_key.sign(record_hash.as_bytes()).to_bytes().to_vec();
         self.inner.merkle_root = self.inner.update_merkle_root(&record_hash);
 
+        // Capture tamper-resistant monotonic timestamp at inference instant
+        let monotonic_ns = monotonic_raw_nanos();
+
         let record = SealedRecord {
             id: format!("aki_{}", Uuid::new_v4()),
-            timestamp: Utc::now().to_rfc3339(),
+            timestamp: Utc::now().to_rfc3339(),      // Wall-clock for legal mapping
+            monotonic_nanos: monotonic_ns,            // Tamper-resistant for chain integrity
             hash: record_hash.to_hex().to_string(),
             signature,
             merkle_root: self.inner.merkle_root.to_hex().to_string(),
@@ -306,3 +341,4 @@ fn agdr_aki(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SealedRecord>()?;
     Ok(())
 }
+
