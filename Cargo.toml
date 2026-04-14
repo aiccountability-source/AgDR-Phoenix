@@ -6,6 +6,7 @@ license = "Apache-2.0 OR CC0-1.0"
 repository = "https://github.com/aiccountability-source/AgDR-Phoenix"
 readme = README.md
 description = "Atomic Kernel Inference SDK for Phoenix v1.8 Ultra"
+homepage = "https://www.accountability.ai"
 authors = ["Genesis Glass Foundation <founding@accountability.ai>"]
 
 [lib]
