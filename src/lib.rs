@@ -1,4 +1,26 @@
-use pyo3::prelude::*;
+//! Atomic Kernel Inference SDK for cryptographically-sealed AI decision records.
+//!
+//! # Features
+//! - 🔐 Cryptographic sealing with Ed25519 + BLAKE3
+//! - ⏱ Tamper-resistant monotonic timestamps via `CLOCK_MONOTONIC_RAW`
+//! - 🧠 Coherence scoring via exponential-decay embedding spine
+//! - 🐍 Optional Python bindings via PyO3 (feature-gated)
+//! - 🦀 Pure Rust core usable without Python
+//!
+//! # Usage
+//!
+//! ## Rust-only (default for crates.io)
+//! ```toml
+//! [dependencies]
+//! agdr-aki = "1.8"
+//! ```
+//!
+//! ## With Python bindings
+//! ```toml
+//! [dependencies]
+//! agdr-aki = { version = "1.8", features = ["python"] }
+//! ```
+
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fs::OpenOptions;
@@ -12,11 +34,18 @@ use uuid::Uuid;
 use rand::rngs::OsRng;
 use std::path::Path;
 
-// ── Tamper-resistant monotonic timing (POSIX) ────────────────────────────────
-// Uses CLOCK_MONOTONIC_RAW: immune to NTP, settimeofday(), leap seconds.
-// Fallback to std::time::Instant if clock_gettime fails (should not happen on Linux).
+// ── PyO3 imports (gated behind python feature) ─────────────────────────────
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use hex;
+
+// ── Tamper-resistant monotonic timing (POSIX) ─────────────────────────────
+/// Returns nanoseconds since boot using `CLOCK_MONOTONIC_RAW` on Linux,
+/// or `Instant::now().elapsed()` as fallback on other platforms.
+/// Immune to NTP, `settimeofday()`, and leap seconds.
 #[inline(always)]
-fn monotonic_raw_nanos() -> u64 {
+pub fn monotonic_raw_nanos() -> u64 {
     #[cfg(target_os = "linux")]
     {
         use libc::{clock_gettime, CLOCK_MONOTONIC_RAW, timespec};
@@ -28,29 +57,47 @@ fn monotonic_raw_nanos() -> u64 {
                     .wrapping_mul(1_000_000_000)
                     .wrapping_add(ts.tv_nsec as u64)
             } else {
-                // Fallback: use Instant if clock_gettime fails
                 std::time::Instant::now().elapsed().as_nanos() as u64
             }
         }
     }
     #[cfg(not(target_os = "linux"))]
     {
-        // macOS, BSD, Windows: use Instant (monotonic but not raw)
-        // For production deployments on non-Linux, consider platform-specific raw clocks
         std::time::Instant::now().elapsed().as_nanos() as u64
     }
 }
 
-// ── PPPTriplet ────────────────────────────────────────────────────────────────
+// ── Core Data Types (always available, no PyO3) ───────────────────────────
+/// Embedding delta for insight tracking.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeltaEmbedding {
+    pub vector: Vec<i8>,
+    pub confidence: f64,
+    pub delta_norm: f64,
+}
 
+/// Optional insight token generated when coherence threshold is met.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CoreInsightToken {
+    pub lesson: String,
+    pub confidence: f64,
+    pub delta: Option<DeltaEmbedding>,
+}
+
+// ── Python-exposed Types (gated behind python feature) ────────────────────
+#[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pyclass]
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Provenance-Place-Purpose triplet for contextual grounding.
 pub struct PPPTriplet {
     #[pyo3(get, set)] pub provenance: String,
     #[pyo3(get, set)] pub place: String,
     #[pyo3(get, set)] pub purpose: String,
 }
 
+#[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pymethods]
 impl PPPTriplet {
     #[new]
@@ -60,10 +107,11 @@ impl PPPTriplet {
     }
 }
 
-// ── HumanDeltaChain ───────────────────────────────────────────────────────────
-
+#[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pyclass]
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Human-in-the-loop decision chain reference.
 pub struct HumanDeltaChain {
     #[pyo3(get, set)] pub chain_id: String,
     #[pyo3(get, set)] pub agent_decision_ref: String,
@@ -71,6 +119,8 @@ pub struct HumanDeltaChain {
     #[pyo3(get, set)] pub terminal_node: String,
 }
 
+#[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pymethods]
 impl HumanDeltaChain {
     #[new]
@@ -90,30 +140,15 @@ impl HumanDeltaChain {
     }
 }
 
-// ── Internal structs ──────────────────────────────────────────────────────────
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DeltaEmbedding {
-    pub vector: Vec<i8>,
-    pub confidence: f64,
-    pub delta_norm: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CoreInsightToken {
-    pub lesson: String,
-    pub confidence: f64,
-    pub delta: Option<DeltaEmbedding>,
-}
-
-// ── SealedRecord ──────────────────────────────────────────────────────────────
-
+#[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pyclass]
 #[derive(Serialize, Deserialize)]
+/// Cryptographically sealed decision record.
 pub struct SealedRecord {
     #[pyo3(get)] pub id: String,
-    #[pyo3(get)] pub timestamp: String,           // Wall-clock (UTC) for legal mapping
-    #[pyo3(get)] pub monotonic_nanos: u64,        // Tamper-resistant monotonic timestamp
+    #[pyo3(get)] pub timestamp: String,
+    #[pyo3(get)] pub monotonic_nanos: u64,
     #[pyo3(get)] pub hash: String,
     #[pyo3(get)] pub signature: Vec<u8>,
     #[pyo3(get)] pub merkle_root: String,
@@ -128,9 +163,9 @@ pub struct SealedRecord {
     #[pyo3(get)] pub core_insight_json: Option<String>,
 }
 
-// ── Key management ────────────────────────────────────────────────────────────
-
-fn load_or_generate_signing_key(wal_path: &str) -> SigningKey {
+// ── Key management (always available) ─────────────────────────────────────
+/// Load existing Ed25519 key or generate new one, persisted alongside WAL.
+pub fn load_or_generate_signing_key(wal_path: &str) -> SigningKey {
     if wal_path == ":memory:" {
         return SigningKey::generate(&mut OsRng);
     }
@@ -146,8 +181,8 @@ fn load_or_generate_signing_key(wal_path: &str) -> SigningKey {
     }
 }
 
-// ── AKIEngine internal ────────────────────────────────────────────────────────
-
+// ── AKIEngine Core (always available) ─────────────────────────────────────
+/// Internal engine state: spine, reputation, merkle root, WAL path.
 pub struct AKIEngine {
     signing_key: SigningKey,
     merkle_root: Blake3Hash,
@@ -159,6 +194,7 @@ pub struct AKIEngine {
 }
 
 impl AKIEngine {
+    /// Weighted exponential-decay average of embedding spine (lambda=0.98).
     fn weighted_spine_average(&self) -> [f32; 64] {
         let mut avg = [0.0f32; 64];
         let n = self.spine.len();
@@ -174,11 +210,14 @@ impl AKIEngine {
         avg
     }
 
+    /// Update Merkle root with new leaf hash (BLAKE3).
     fn update_merkle_root(&mut self, leaf_hash: &Blake3Hash) -> Blake3Hash {
         let combined = format!("{:?}{:?}", self.merkle_root, leaf_hash);
         blake3::hash(combined.as_bytes())
     }
 
+    /// Append sealed record to write-ahead log (gated for Python build).
+    #[cfg(feature = "python")]
     fn append_to_wal(&self, record: &SealedRecord) {
         if self.wal_path == ":memory:" { return; }
         if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&self.wal_path) {
@@ -187,14 +226,18 @@ impl AKIEngine {
     }
 }
 
-// ── AKIEngine Python API ──────────────────────────────────────────────────────
-
+// ── AKIEngine Python API (gated behind python feature) ───────────────────
+#[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pyclass]
 #[pyo3(name = "AKIEngine")]
+/// Python-facing wrapper for the atomic kernel inference engine.
 pub struct PyAKIEngine {
     inner: AKIEngine,
 }
 
+#[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pymethods]
 impl PyAKIEngine {
     #[new]
@@ -216,6 +259,7 @@ impl PyAKIEngine {
     }
 
     #[pyo3(signature = (ctx, prompt, reasoning_trace, output, ppp_triplet, human_delta_chain, auto_insight=true))]
+    /// Capture and seal a decision record with cryptographic integrity.
     fn capture(
         &mut self,
         py: Python<'_>,
@@ -239,7 +283,7 @@ impl PyAKIEngine {
             terminal_node: human_delta_chain.terminal_node.clone(),
         };
 
-        // Embedding
+        // Deterministic embedding stub (replace with real model in production)
         let seed = (prompt.len() + output.len()) as f32;
         let mut current = [0.0f32; 64];
         for i in 0..64 {
@@ -253,6 +297,7 @@ impl PyAKIEngine {
 
         let spine_avg = self.inner.weighted_spine_average();
 
+        // Cosine similarity for coherence scoring
         let mut dot = 0.0f64;
         let mut norm_a = 0.0f64;
         let mut norm_b = 0.0f64;
@@ -269,6 +314,7 @@ impl PyAKIEngine {
             0.5
         };
 
+        // Generate insight token if coherence exceeds threshold
         let core_insight = if auto_insight && coherence >= self.inner.coherence_threshold {
             let mut delta_vec = vec![0i8; 64];
             for i in 0..64 {
@@ -288,8 +334,10 @@ impl PyAKIEngine {
             None
         };
 
+        // Update reputation with exponential moving average
         self.inner.reputation = 0.98 * self.inner.reputation + 0.02 * coherence;
 
+        // Canonical serialization for hashing
         let canonical = format!(
             "{}{}{}{}{:?}{:?}",
             ppp.provenance, ppp.place, ppp.purpose,
@@ -299,13 +347,13 @@ impl PyAKIEngine {
         let signature = self.inner.signing_key.sign(record_hash.as_bytes()).to_bytes().to_vec();
         self.inner.merkle_root = self.inner.update_merkle_root(&record_hash);
 
-        // Capture tamper-resistant monotonic timestamp at inference instant
+        // Capture tamper-resistant monotonic timestamp
         let monotonic_ns = monotonic_raw_nanos();
 
         let record = SealedRecord {
             id: format!("aki_{}", Uuid::new_v4()),
-            timestamp: Utc::now().to_rfc3339(),      // Wall-clock for legal mapping
-            monotonic_nanos: monotonic_ns,            // Tamper-resistant for chain integrity
+            timestamp: Utc::now().to_rfc3339(),
+            monotonic_nanos: monotonic_ns,
             hash: record_hash.to_hex().to_string(),
             signature,
             merkle_root: self.inner.merkle_root.to_hex().to_string(),
@@ -326,14 +374,17 @@ impl PyAKIEngine {
         Ok(record)
     }
 
+    /// Return the public verifying key as hex string.
     fn public_key_hex(&self) -> String {
         hex::encode(self.inner.signing_key.verifying_key().to_bytes())
     }
 }
 
-// ── Module ────────────────────────────────────────────────────────────────────
-
+// ── Python Module Entry Point (gated) ─────────────────────────────────────
+#[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pymodule]
+/// Python module entry point for `agdr_aki`.
 fn agdr_aki(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyAKIEngine>()?;
     m.add_class::<PPPTriplet>()?;
@@ -341,4 +392,3 @@ fn agdr_aki(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SealedRecord>()?;
     Ok(())
 }
-
