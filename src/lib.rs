@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! Atomic Kernel Inference SDK for cryptographically-sealed AI decision records.
 
 use serde::{Deserialize, Serialize};
