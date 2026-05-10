@@ -1,5 +1,11 @@
 # Changelog
 
+##Release 1.8.4 - Python 3.13 & 3.14 Support
+
+This release adds official support for Python 3.13 and 3.14. No code changes were required. 
+The update primarily involves updating the Stable ABI target in Cargo.toml to abi3-py39 for forward compatibility and declaring support for the new Python versions in pyproject.toml by widening the requires-python range and adding the appropriate Trove classifiers.
+
+
 ## [1.8.0] - 2026-04-08
 
 ### Added
