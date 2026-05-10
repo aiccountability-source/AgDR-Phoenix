@@ -1,11 +1,14 @@
 [project]
 name = "agdr-aki"
-version = "1.8.3"                  # Bump to a patch version for the update
+version = "1.8.4"
 description = "AgDR-AKI: Sub-microsecond AI accountability SDK. Court-admissible forensic records (PPP Triplet) with cryptographic proof for regulated AI (EU AI Act, Canada Evidence Act)."
 authors = [{ name = "Genesis Glass Foundation", email = "founding@accountability.ai" }]
 license = { text = "Apache-2.0 OR CC0-1.0" }
 readme = "README.md"
-requires-python = ">=3.10"
+
+# Allows Python 3.10 through 3.14 (and future 3.15 once tested)
+requires-python = ">=3.10,<3.15"
+
 dependencies = ["pydantic>=2.0"]
 
 keywords = [
@@ -36,6 +39,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Rust",
     "Topic :: Security",
     "Topic :: Security :: Cryptography",

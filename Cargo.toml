@@ -1,6 +1,6 @@
 [package]
 name = "agdr-aki"
-version = "1.8.2"
+version = "1.8.4"
 edition = "2021"
 rust-version = "1.75"
 license = "Apache-2.0 OR CC0-1.0"
@@ -22,7 +22,8 @@ name = "agdr_aki"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.22", features = ["extension-module", "abi3-py312"], optional = true }
+# abi3-py39 ensures forward compatibility with Python 3.13 and 3.14
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 bincode = "2.0"
