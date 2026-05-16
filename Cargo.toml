@@ -22,7 +22,6 @@ name = "agdr_aki"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-# abi3-py39 ensures forward compatibility with Python 3.13 and 3.14
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -33,6 +32,9 @@ hex = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.10", features = ["v4", "serde"] }
 rand = "0.8"
+# <-- libc is removed from here
+
+[target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
 
 [profile.release]
