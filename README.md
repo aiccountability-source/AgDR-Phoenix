@@ -7,7 +7,7 @@
 
 [![Stewarded by GGF](https://img.shields.io/badge/Stewarded_by-Genesis_Glass_Foundation-4B0082.svg)](https://accountability.ai)
 
-**Atomic Kernel Inference SDK for Phoenix v1.8.2 Ultra**
+**Atomic Kernel Inference SDK for Phoenix v1.8.5 Ultra**
 
 Developed by the [Genesis Glass Foundation](https://accountability.ai) (Fondation Genèse Cristal)
 A federally incorporated Canadian not-for-profit.
