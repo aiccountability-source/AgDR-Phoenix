@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 //! Atomic Kernel Inference SDK for cryptographically-sealed AI decision records.
 
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,10 @@ use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use hex;
 
+/// Retrieves a raw, high-precision nanosecond timestamp from the system clock.
+///
+/// On Linux platforms, this targets `CLOCK_MONOTONIC_RAW` directly to remain completely
+/// immune to downstream NTP time adjustments or slewing, guaranteeing monotonic execution sequencing.
 #[inline(always)]
 pub fn monotonic_raw_nanos() -> u64 {
     #[cfg(target_os = "linux")]
@@ -42,27 +46,39 @@ pub fn monotonic_raw_nanos() -> u64 {
     }
 }
 
+/// A localized, low-overhead embedding vector tracking contextual micro-shifts.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DeltaEmbedding {
+    /// Quantized direction parameters capturing structural data coordinates.
     pub vector: Vec<i8>,
+    /// Confidence indicator matching the inference weight.
     pub confidence: f64,
+    /// Absolute mathematical size metrics of the contextual variance.
     pub delta_norm: f64,
 }
 
+/// A real-time evaluation token logging historical data convergence patterns.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CoreInsightToken {
+    /// Human-readable explanation characterizing the historical alignment state.
     pub lesson: String,
+    /// Exact mathematical probability mapping standard similarity metrics.
     pub confidence: f64,
+    /// Embedded spatial variance metrics representing localized context drift.
     pub delta: Option<DeltaEmbedding>,
 }
 
+/// A triad of metadata anchoring the lineage, physical origin, and analytical intent of an event block.
 #[cfg(feature = "python")]
 #[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pyclass]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PPPTriplet {
+    /// Cryptographic or system lineage tracking the structural history.
     #[pyo3(get, set)] pub provenance: String,
+    /// The specific systemic, environmental, or geographic processing node.
     #[pyo3(get, set)] pub place: String,
+    /// The logical framework intent guiding the execution loop.
     #[pyo3(get, set)] pub purpose: String,
 }
 
@@ -72,19 +88,24 @@ pub struct PPPTriplet {
 impl PPPTriplet {
     #[new]
     #[pyo3(signature = (provenance, place, purpose))]
-    fn new(provenance: String, place: String, purpose: String) -> Self {
+    pub fn new(provenance: String, place: String, purpose: String) -> Self {
         Self { provenance, place, purpose }
     }
 }
 
+/// An audit node linking autonomous determinations to definitive human-in-the-loop review overrides.
 #[cfg(feature = "python")]
 #[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pyclass]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HumanDeltaChain {
+    /// Unique identity tracking the active sequence.
     #[pyo3(get, set)] pub chain_id: String,
+    /// Reference signature pointer linking directly back to the original model output.
     #[pyo3(get, set)] pub agent_decision_ref: String,
+    /// Evaluation state marking whether review processing has formally closed.
     #[pyo3(get, set)] pub resolved: bool,
+    /// Terminal validation node sealing the chain integrity state.
     #[pyo3(get, set)] pub terminal_node: String,
 }
 
@@ -94,7 +115,7 @@ pub struct HumanDeltaChain {
 impl HumanDeltaChain {
     #[new]
     #[pyo3(signature = (agent_decision_ref, resolved, terminal_node, chain_id=None))]
-    fn new(
+    pub fn new(
         agent_decision_ref: String,
         resolved: bool,
         terminal_node: String,
@@ -109,28 +130,47 @@ impl HumanDeltaChain {
     }
 }
 
+/// A court-admissible, tamper-evident data structure capturing an immutable point-in-time calculation state.
 #[cfg(feature = "python")]
 #[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pyclass]
 #[derive(Serialize, Deserialize)]
 pub struct SealedRecord {
+    /// Universally unique identifier managing the tracking envelope.
     #[pyo3(get)] pub id: String,
+    /// RFC3339 timestamp recording standard real-world clock time.
     #[pyo3(get)] pub timestamp: String,
+    /// Monotonic clock offset logging real-world physical processing sequence order.
     #[pyo3(get)] pub monotonic_nanos: u64,
+    /// BLAKE3 hash string locking total structure components.
     #[pyo3(get)] pub hash: String,
+    /// Ed25519 digital signature verifying authority origins.
     #[pyo3(get)] pub signature: Vec<u8>,
+    /// Accumulated chain integrity root verifying sequencing order.
     #[pyo3(get)] pub merkle_root: String,
+    /// Similarity rating measuring historical continuity states.
     #[pyo3(get)] pub coherence_score: f64,
+    /// System health scale monitoring moving reliability baselines.
     #[pyo3(get)] pub reputation_scalar: f64,
+    /// JSON serialization holding provenance parameters.
     #[pyo3(get)] pub ppp_json: String,
+    /// JSON string capturing overall operational environment conditions.
     #[pyo3(get)] pub ctx_json: String,
+    /// Standard engineering input used for generating calculations.
     #[pyo3(get)] pub prompt: String,
+    /// JSON representation outlining internal calculation steps.
     #[pyo3(get)] pub reasoning_trace_json: String,
+    /// Definitive answer generated through computational operations.
     #[pyo3(get)] pub output: String,
+    /// JSON structure tracking human oversight and adjustments.
     #[pyo3(get)] pub human_delta_chain_json: String,
+    /// JSON representation storing analytical insight parameters.
     #[pyo3(get)] pub core_insight_json: Option<String>,
 }
 
+/// Retrieves an existing Ed25519 signing token or initializes a new key pair if missing.
+///
+/// If path parameter is set to `":memory:"`, an ephemeral configuration is utilized.
 pub fn load_or_generate_signing_key(wal_path: &str) -> SigningKey {
     if wal_path == ":memory:" {
         return SigningKey::generate(&mut OsRng);
@@ -147,18 +187,27 @@ pub fn load_or_generate_signing_key(wal_path: &str) -> SigningKey {
     }
 }
 
+/// Core execution container managing real-time calculations and integrity verification sequences.
 pub struct AKIEngine {
-    signing_key: SigningKey,
-    merkle_root: Blake3Hash,
-    spine: VecDeque<[f32; 64]>,
-    reputation: f64,
-    coherence_threshold: f64,
-    wal_path: String,
-    max_spine_size: usize,
+    /// Core signing identity generating cryptographic seals.
+    pub signing_key: SigningKey,
+    /// Running blockchain-style history validation pointer.
+    pub merkle_root: Blake3Hash,
+    /// Sliding memory store capturing spatial data vectors.
+    pub spine: VecDeque<[f32; 64]>,
+    /// Overall reliability baseline rating.
+    pub reputation: f64,
+    /// Acceptable baseline indicator filtering drift variance.
+    pub coherence_threshold: f64,
+    /// Active write-ahead log system resource location.
+    pub wal_path: String,
+    /// Maximum limit managing internal vector stores.
+    pub max_spine_size: usize,
 }
 
 impl AKIEngine {
-    fn weighted_spine_average(&self) -> [f32; 64] {
+    /// Processes a weighted exponential decay mapping across historical structural coordinates.
+    pub fn weighted_spine_average(&self) -> [f32; 64] {
         let mut avg = [0.0f32; 64];
         let n = self.spine.len();
         if n == 0 { return avg; }
@@ -173,13 +222,14 @@ impl AKIEngine {
         avg
     }
 
-    fn update_merkle_root(&mut self, leaf_hash: &Blake3Hash) -> Blake3Hash {
+    /// Appends a new block item to update the running history state verification tree.
+    pub fn update_merkle_root(&mut self, leaf_hash: &Blake3Hash) -> Blake3Hash {
         let combined = format!("{:?}{:?}", self.merkle_root, leaf_hash);
         blake3::hash(combined.as_bytes())
     }
 
     #[cfg(feature = "python")]
-    fn append_to_wal(&self, record: &SealedRecord) {
+    pub fn append_to_wal(&self, record: &SealedRecord) {
         if self.wal_path == ":memory:" { return; }
         if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&self.wal_path) {
             let _ = writeln!(file, "{}", serde_json::to_string(record).unwrap_or_default());
@@ -187,12 +237,14 @@ impl AKIEngine {
     }
 }
 
+/// High-performance Python extension wrapper container exposed for model integration bindings.
 #[cfg(feature = "python")]
 #[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pyclass]
 #[pyo3(name = "AKIEngine")]
 pub struct PyAKIEngine {
-    inner: AKIEngine,
+    /// Under-the-hood pure Rust calculation system.
+    pub inner: AKIEngine,
 }
 
 #[cfg(feature = "python")]
@@ -200,7 +252,7 @@ pub struct PyAKIEngine {
 #[pymethods]
 impl PyAKIEngine {
     #[new]
-    fn new(wal_path: String) -> Self {
+    pub fn new(wal_path: String) -> Self {
         if wal_path != ":memory:" {
             let _ = OpenOptions::new().create(true).append(true).open(&wal_path);
         }
@@ -217,8 +269,9 @@ impl PyAKIEngine {
         }
     }
 
+    /// Captures execution contexts, runs real-time consistency checks, and signs an immutable audit record.
     #[pyo3(signature = (ctx, prompt, reasoning_trace, output, ppp_triplet, human_delta_chain, auto_insight=true))]
-    fn capture(
+    pub fn capture(
         &mut self,
         py: Python<'_>,
         ctx: &Bound<'_, PyAny>,
@@ -326,11 +379,13 @@ impl PyAKIEngine {
         Ok(record)
     }
 
-    fn public_key_hex(&self) -> String {
+    /// Exposes the verifying identity public hex configuration signature.
+    pub fn public_key_hex(&self) -> String {
         hex::encode(self.inner.signing_key.verifying_key().to_bytes())
     }
 }
 
+/// Main native library interface mapping out public Python module interface class pointers.
 #[cfg(feature = "python")]
 #[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 #[pymodule]
