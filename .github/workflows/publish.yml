@@ -1,9 +1,25 @@
+
 name: Publish
 
 on:
   push:
     tags:
       - 'v*'
+
+# permissions:
+  contents: read    # Allows the runner to pull your repository code
+  id-token: write   # Allows the runner to securely authenticate with crates.io
+
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -21,5 +37,4 @@ jobs:
         run: cargo test
 
       - name: Publish to crates.io
-        run: |
-          cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish
