@@ -1,3 +1,4 @@
+nano Cargo.toml
 [package]
 name = "agdr-aki"
 version = "1.8.6"
