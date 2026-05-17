@@ -43,7 +43,7 @@ codegen-units = 1
 strip = true
 panic = "abort"
 
-[[package.metadata.docs.rs]
+[package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 env = ["PYO3_NO_PYTHON=1"]
